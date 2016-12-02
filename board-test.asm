@@ -24,18 +24,23 @@ compChar:	.asciiz "X"
 compInput:	.asciiz "Computer chooses col "
 grid: .space 24		# begins at an address that's a multiple of 4
 colFull:	.asciiz "That col is full - please pick another spot: "
-inputPrompt:	.asciiz "Please pick a number 1-6: "						
+inputPrompt:	.asciiz "Please pick a col (1-6): "						
 againMsg:	.asciiz	"PLAY AGAIN (Nonzero=YES, 0=NO)? "
 welcome:	.asciiz	"WELCOME TO THE MIPSYM VERSION OF CONNECT-4!"
-clear_prompt:	.asciiz "                                               "
+clear_prompt:	.asciiz "                                                 "
 	.code
 	.globl main
 main:
 #	jal	resetdisplay		# clear the console
 	jal	initialize_grid
 	jal	print_game
-	jal	userInput
+1:	jal	select_col_user
+	jal	drop_piece
+	jal	print_game
 	jal	computerInput
+	jal	drop_piece
+	jal	print_game
+	b	1b
 	syscall	$exit
 	
 resetdisplay:
@@ -135,19 +140,56 @@ print_game:
 #prompt user to enter a number from 1-6 
 #prompt is printer on line 14
 #######################################
-userInput:
-	add 	$a0,$0,$0
+select_col_user:
+	la	$t0,grid	#grid
+	addi	$t1,$0,1	#min
+	addi	$t2,$0,6	#max
+	add	$t5,$0,$0
+
+#move cursor
+1:	add 	$a0,$0,$0
 	addi 	$a1,$0,14
 	syscall	$xy
+
+	la 	$a0,clear_prompt
+	syscall	$print_string
+
+	add 	$a0,$0,$0
+	syscall	$xy
+
+#prompt
 	la	$a0,inputPrompt
 	syscall $print_string
-	syscall $read_int
+2:	syscall $read_int
+	bgt	$v0,$t2,1b
+	blez	$v0,1b
+
+#check spot
+	add	$t0,$t0,$v0
+	lb	$t3,($t0)
+	la	$t4,blankChar
+	lb	$t4,($t4)
+	bne	$t4,$t3,3f
+	addi	$a0,$v0,-1
+	add	$a1,$0,$0
 	jr	$ra
+
+3:	add 	$a0,$0,$0
+	addi 	$a1,$0,14
+	syscall	$xy
+	la 	$a0,clear_prompt
+	syscall	$print_string
+	add 	$a0,$0,$0
+	syscall	$xy
+	la	$a0,colFull
+	syscall	$print_string
+	b	2b
 
 ########################################
 #computer picks a number for col 1-6
 ########################################
 computerInput:
+	la	$t1,grid
 	add 	$a0,$0,$0
 	addi 	$a1,$0,14
 	syscall	$xy
@@ -165,6 +207,31 @@ computerInput:
 	beq	$t0,$a0,1b
 	beqz	$a0,1b
 	syscall	$print_int
+	addi	$a1,$0,1
+	addi	$a0,$a0,-1
 	jr	$ra
 
+#place piece in array
+drop_piece:
+	la	$t0,grid
+	la	$t3,blankChar
+	lb	$t3,($t3)
+	bgtz	$a1,1f
+	la	$t1,playerChar
+	b	2f
 
+1:	la	$t1,compChar
+
+2:	lb	$t1,($t1)
+	addi	$a0,$a0,18
+	add	$t0,$t0,$a0
+3:	lb	$t2,($t0)
+	bne	$t3,$t2,4f
+
+	sb	$t1,($t0)
+	jr	$ra
+
+4:	addi	$a0,$a0,-6
+	la	$t0,grid
+	add	$t0,$t0,$a0
+	b	3b
