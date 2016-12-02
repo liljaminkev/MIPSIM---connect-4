@@ -1,0 +1,157 @@
+    1                  		.data
+    2 10010000 20202020	gridDisplay: .ascii "    _________________________\n"
+    3 1001001e 20202020	 .ascii	"    |   |   |   |   |   |   |\n"
+    4 1001003c 20202020	 .ascii	"    |   |   |   |   |   |   |\n"
+    5 1001005a 20202020	 .ascii	"    |___|___|___|___|___|___|\n"
+    6 10010078 20202020	 .ascii	"    |   |   |   |   |   |   |\n"
+    7 10010096 20202020	 .ascii	"    |   |   |   |   |   |   |\n"
+    8 100100b4 20202020	 .ascii	"    |___|___|___|___|___|___|\n"
+    9 100100d2 20202020	 .ascii	"    |   |   |   |   |   |   |\n"
+   10 100100f0 20202020	 .ascii	"    |   |   |   |   |   |   |\n"
+   11 1001010e 20202020	 .ascii	"    |___|___|___|___|___|___|\n"
+   12 1001012c 20202020	 .ascii	"    |   |   |   |   |   |   |\n"
+   13 1001014a 20202020	 .ascii	"    |   |   |   |   |   |   |\n"
+   14 10010168 20202020	 .asciiz	"    |___|___|___|___|___|___|\n"
+   15                   
+   16 10010187 52455355	uwin: .asciiz "USER WINS!!"
+   17 10010193 504d4f43	cwin: .asciiz	"COMPUTER WINS!!"
+   18 100101a3 44495247	tie: .asciiz	"GRID IS FULL. TIE!! "
+   19                   
+   20 100101b8 0020	blankChar:	.asciiz	" "
+   21 100101ba 004f	playerChar:	.asciiz "O"
+   22 100101bc 0058	compChar:	.asciiz "X"
+   23                   
+   24 100101be         	grid: .space 24		# begins at an address that's a multiple of 4
+   25 100101d6 74616854	colFull:	.asciiz "That col is full - please pick another spot: "
+   26 10010204 61656c50	inputPrompt:	.asciiz "Please pick a number 1-6: "						
+   27 1001021f 59414c50	againMsg:	.asciiz	"PLAY AGAIN (Nonzero=YES, 0=NO)? "
+   28 10010240 434c4557	welcome:	.asciiz	"WELCOME TO THE MIPSYM VERSION OF CONNECT-4!"
+   29                  		.code
+   30 00400000         		.globl main
+   31                   main:
+   32                   #	jal	resetdisplay		# clear the console
+   33 00400000 0c100007		jal	initialize_grid
+   34 00400004 0c100012		jal	print_game
+   35 00400008 0c100033		jal	userInput
+   36 0040000c 0000028c		syscall	$exit
+   37                   	
+   38                   resetdisplay:
+   39                   # function code implementation
+   40 00400010 2004002e		addi	$a0,$0,'.		# clear screen character
+   41 00400014 000002cc		syscall	$print_char
+   42 00400018 03e00008		jr	$ra
+   43                   
+   44                   ##################################################
+   45                   # function loads grid and sets all values to space
+   46                   ##################################################
+   47                   initialize_grid:
+   48                  		la	$t0,grid	#t0 = grid array
+   48 0040001c 3c081001		lui	$t0,0x1001
+   48 00400020 350801be		ori	$t0,$t0,0x1BE
+   49                  		la	$t2,blankChar	#load ascii 0
+   49 00400024 3c0a1001		lui	$t2,0x1001
+   49 00400028 354a01b8		ori	$t2,$t2,0x1B8
+   50 0040002c 20090018		addi	$t1,$0,24	#counter
+   51                   
+   52                   #set arr to 0
+   53 00400030 814b0000		lb	$t3,($t2)		#x = '0'
+   54 00400034 a10b0000	1:	sb	$t3,($t0)		#store in to board
+   55 00400038 21080001		addi	$t0,$t0,1
+   56 0040003c 2129ffff		addi	$t1,$t1,-1
+   57 00400040 1d20fffc		bgtz	$t1,1b
+   58                   
+   59                   #print array
+   60                   #	la	$a0,grid
+   61                   #	syscall	$print_string
+   62                   	
+   63 00400044 03e00008		jr	$ra
+   64                   
+   65                   
+   66                   
+   67                   ###############################################################################
+   68                   # void print_game(void)
+   69                   #
+   70                   ###############################################################################
+   71                   # Description: 
+   72                   # This function prints a 4 row-by-6 column grid onto the console. The grid lines
+   73                   # are comprised of underscore characters separating the rows, and the vertical
+   74                   # bar (ASCII byte 0x7C) separating the columns. Each grid cell has a height of
+   75                   # 3 spaces in the vertical direction, and 3 spaces in the horizontal direction.
+   76                   # The vertical bars forming the vertical boundaries of cells must be separated 4 spaces 
+   77                   # from each one another. The underscore characters forming the horizontal boundaries
+   78                   # of the cells must be separated by 3 rows from one another.
+   79                    
+   80                   # The contents within each grid cell is stored in a 24-byte "grid" byte array. If
+   81                   # a particular element of the "grid" array contains a value of 0, then the corresponding 
+   82                   # grid cell is empty, and nothing is visually written into each cell. If an element
+   83                   # contains a value of 1, then an "O" is placed in the center of a grid cell. If an 
+   84                   # element contains a value of 2, then an "X" is placed in the center of the grid cell.
+   85                   
+   86                   ###############################################################################
+   87                   #  Register usage: <list any t0-t9 registers used by the function>
+   88                   ###############################################################################
+   89                   
+   90                   print_game:
+   91 00400048 20040000		addi	$a0,$0,0	#set x = 0
+   92 0040004c 20050000		addi	$a1,$0,0	#set y = 0
+   93 00400050 0000050c		syscall	$xy		#set cursor at 0,0
+   94                  		la	$a0,gridDisplay	#a0 = gridDisplay
+   94 00400054 3c041001		lui	$a0,0x1001
+   94 00400058 34840000		ori	$a0,$a0,0x00
+   95 0040005c 0000010c		syscall	$print_string	#print gridDisplay
+   96                   	
+   97 00400060 20040023		addi	$a0,$0,35	#set x at 35
+   98 00400064 20050005		addi	$a1,$0,5	#set y at 5
+   99 00400068 0000050c		syscall	$xy		#set cursor at 35,5
+  100                   	
+  101                  		la	$a0,welcome
+  101 0040006c 3c041001		lui	$a0,0x1001
+  101 00400070 34840240		ori	$a0,$a0,0x240
+  102 00400074 0000010c		syscall	$print_string	#print message
+  103                   
+  104                   
+  105                   # loop through grid array to place Os and Xs onto the console
+  106                  		la	$t0,grid	#load grid array t0
+  106 00400078 3c081001		lui	$t0,0x1001
+  106 0040007c 350801be		ori	$t0,$t0,0x1BE
+  107 00400080 20090006		addi	$t1,$0,6	#Col counter = 6
+  108 00400084 200c0004		addi	$t4,$0,4	#row counter = 4
+  109 00400088 200a0006		addi	$t2,$0,6	#x pos
+  110 0040008c 200b0002		addi	$t3,$0,2	#y pos
+  111                   
+  112                   1:	
+  113 00400090 01402020	2:	add	$a0,$t2,$0	#load x
+  114 00400094 01602820		add	$a1,$t3,$0	#load y
+  115 00400098 0000050c		syscall $xy		#move cursor
+  116 0040009c 81040000		lb	$a0,($t0)	#get piece from arr
+  117 004000a0 000002cc		syscall	$print_char	#print game piece
+  118 004000a4 214a0004		addi	$t2,$t2,4	#inc x by 4
+  119 004000a8 21080001		addi	$t0,$t0,1	#inc arr pointer
+  120 004000ac 2129ffff		addi	$t1,$t1,-1	#dec col counter
+  121                   	
+  122 004000b0 1d20fff7		bgtz	$t1,2b		#while col not 0
+  123                   	
+  124 004000b4 216b0003		addi	$t3,$t3,3	#inc row pos by 3
+  125 004000b8 200a0006		addi	$t2,$0,6	#reset col pos back to 6
+  126 004000bc 20090006		addi	$t1,$0,6	#add 6 back to row counter
+  127 004000c0 218cffff		addi	$t4,$t4,-1	#dec row counter
+  128 004000c4 1d80fff2		bgtz	$t4,1b		#while row not 0
+  129 004000c8 03e00008		jr	$ra
+  130                   
+  131                   #######################################
+  132                   #prompt user to enter a number from 1-6 
+  133                   #prompt is printer on line 14
+  134                   #######################################
+  135                   userInput:
+  136 004000cc 00002020		add 	$a0,$0,$0
+  137 004000d0 2005000e		addi 	$a1,$0,14
+  138 004000d4 0000050c		syscall	$xy
+  139                  		la	$a0,inputPrompt
+  139 004000d8 3c041001		lui	$a0,0x1001
+  139 004000dc 34840204		ori	$a0,$a0,0x204
+  140 004000e0 0000010c		syscall $print_string
+  141 004000e4 0000014c		syscall $read_int
+  142 004000e8 03e00008		jr	$ra
+  143                   	
+  144                   
+                 	
