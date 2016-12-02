@@ -21,11 +21,13 @@ blankChar:	.asciiz	" "
 playerChar:	.asciiz "O"
 compChar:	.asciiz "X"
 
+compInput:	.asciiz "Computer chooses col "
 grid: .space 24		# begins at an address that's a multiple of 4
 colFull:	.asciiz "That col is full - please pick another spot: "
 inputPrompt:	.asciiz "Please pick a number 1-6: "						
 againMsg:	.asciiz	"PLAY AGAIN (Nonzero=YES, 0=NO)? "
 welcome:	.asciiz	"WELCOME TO THE MIPSYM VERSION OF CONNECT-4!"
+clear_prompt:	.asciiz "                                               "
 	.code
 	.globl main
 main:
@@ -33,6 +35,7 @@ main:
 	jal	initialize_grid
 	jal	print_game
 	jal	userInput
+	jal	computerInput
 	syscall	$exit
 	
 resetdisplay:
@@ -140,4 +143,28 @@ userInput:
 	syscall $print_string
 	syscall $read_int
 	jr	$ra
+
+########################################
+#computer picks a number for col 1-6
+########################################
+computerInput:
+	add 	$a0,$0,$0
+	addi 	$a1,$0,14
+	syscall	$xy
+	la 	$a0,clear_prompt
+	syscall	$print_string
+
+	add 	$a0,$0,$0
+	syscall	$xy
 	
+	addi	$t0,$0,7
+	la	$a0,compInput
+1:	syscall $print_string
+	syscall $random
+	and	$a0,$v0,$t0
+	beq	$t0,$a0,1b
+	beqz	$a0,1b
+	syscall	$print_int
+	jr	$ra
+
+
